@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Ventas | Paradise</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-dark text-light">
+
+    <div class="container mt-4">
+        <a href="/" class="btn btn-outline-light mb-3">⬅ Volver al Inicio</a>
+        
+        {% if mensaje %}
+            <div class="alert alert-info text-dark"><strong>{{ mensaje }}</strong></div>
+        {% endif %}
+
+        <div class="row">
+            <div class="col-md-5">
+                <div class="card bg-secondary text-light mb-3">
+                    <div class="card-header bg-primary text-white">📦 Agregar Producto</div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label>Producto</label>
+                            <select id="select_producto" class="form-select bg-dark text-light border-secondary">
+                                <option value="" disabled selected>Selecciona...</option>
+                                {% for prod in productos %}
+                                    <option value="{{ prod.ID_Producto }}" data-nombre="{{ prod.Nombre }}">{{ prod.Nombre }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="row">
+                            <div class="col-6 mb-3">
+                                <label>Unidades</label>
+                                <input type="number" id="input_unidades" class="form-control bg-dark text-light border-secondary" min="1" value="1">
+                            </div>
+                            <div class="col-6 mb-3">
+                                <label>Precio x Und</label>
+                                <input type="number" id="input_precio" class="form-control bg-dark text-light border-secondary" placeholder="$">
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-warning w-100 fw-bold" onclick="agregarAlCarrito()">➕ Añadir a la lista</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-7">
+                <div class="card bg-secondary text-light">
+                    <div class="card-header bg-success text-white">🛒 Venta Actual</div>
+                    <div class="card-body">
+                        <table class="table table-dark table-sm text-center align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Producto</th>
+                                    <th>Cant</th>
+                                    <th>Precio</th>
+                                    <th>Subtotal</th>
+                                    <th>Quitar</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabla_carrito">
+                                </tbody>
+                        </table>
+                        
+                        <h3 class="text-end text-success fw-bold mt-3">Total: $<span id="total_venta">0</span></h3>
+
+                        <hr>
+                        <form method="POST" action="/ventas" id="form_venta">
+                            <input type="hidden" name="carrito_datos" id="carrito_datos">
+                            
+                            <div class="row align-items-end">
+                                <div class="col-md-6">
+                                    <label>Método de Pago</label>
+                                    <select name="metodo_pago" class="form-select bg-dark text-light border-secondary" required>
+                                        <option value="Efectivo">Efectivo 💵</option>
+                                        <option value="Tarjeta">Tarjeta 💳</option>
+                                        <option value="Nequi">Nequi 🟣</option>
+                                        <option value="Transferencia">Transferencia 🏦</option>
+                                        <option value="Mixto">Mixto 🔀</option>
+                                        <option value="Daviplata">Daviplata 🔴</option>
+                                        <option value="Cancelado">Cancelado ❌</option>
+                                        <option value="Credito">Crédito ⏳</option>
+                                        <option value="Fiao">Fiao 📝</option>
+                                        <option value="Regalo">Regalo 🎁</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <button type="button" class="btn btn-success w-100 fw-bold" onclick="enviarVenta()">✅ FINALIZAR VENTA</button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let carrito = [];
+
+        function agregarAlCarrito() {
+            let select = document.getElementById('select_producto');
+            let id_prod = select.value;
+            let nombre = select.options[select.selectedIndex].getAttribute('data-nombre');
+            let unidades = document.getElementById('input_unidades').value;
+            let precio = document.getElementById('input_precio').value;
+
+            if (!id_prod || !unidades || !precio) {
+                alert("Por favor llena todos los campos del producto.");
+                return;
+            }
+
+            carrito.push({
+                id_producto: id_prod,
+                nombre: nombre,
+                unidades: parseInt(unidades),
+                precio: parseFloat(precio)
+            });
+
+            actualizarTabla();
+            
+            document.getElementById('input_unidades').value = 1;
+            document.getElementById('input_precio').value = "";
+            select.value = "";
+        }
+
+        function quitarDelCarrito(index) {
+            carrito.splice(index, 1);
+            actualizarTabla();
+        }
+
+        function actualizarTabla() {
+            let tbody = document.getElementById('tabla_carrito');
+            let totalDiv = document.getElementById('total_venta');
+            tbody.innerHTML = "";
+            let total = 0;
+
+            carrito.forEach((item, index) => {
+                let subtotal = item.unidades * item.precio;
+                total += subtotal;
+
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${item.nombre}</td>
+                        <td>${item.unidades}</td>
+                        <td>$${item.precio.toLocaleString()}</td>
+                        <td class="text-success fw-bold">$${subtotal.toLocaleString()}</td>
+                        <td><button class="btn btn-danger btn-sm" onclick="quitarDelCarrito(${index})">❌</button></td>
+                    </tr>
+                `;
+            });
+
+            totalDiv.innerText = total.toLocaleString();
+        }
+
+        function enviarVenta() {
+            if (carrito.length === 0) {
+                alert("El carrito está vacío. Agrega productos primero.");
+                return;
+            }
+            document.getElementById('carrito_datos').value = JSON.stringify(carrito);
+            document.getElementById('form_venta').submit();
+        }
+    </script>
+</body>
+</html>
